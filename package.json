@@ -1,0 +1,22 @@
+{
+    "name": "discord-message-tracker",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc && powershell -NoProfile  -Command \"Copy-Item -Path .env -Destination dist/\"",
+        "start": "node dist/index.js",
+        "dev": "ts-node src/index.ts"
+    },
+    "dependencies": {
+        "discord.js": "^14.18.0",
+        "mysql2": "^3.12.0",
+        "express": "^4.21.2",
+        "dotenv": "^16.4.7"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.13.5",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.7.3"
+    }
+}

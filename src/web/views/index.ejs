@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>発言数ランキング</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .ranking {
+            margin-top: 20px;
+        }
+        .user-card {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .first { background-color: #ffd700; }
+        .second { background-color: #c0c0c0; }
+        .third { background-color: #cd7f32; }
+    </style>
+</head>
+<body>
+    <h1>発言数ランキング</h1>
+    <p>日付: <%= date %></p>
+
+    <div class="ranking">
+        <% topUsers.forEach((user, index) => { %>
+            <div class="user-card <%= ['first', 'second', 'third'][index] %>">
+                <h2><%= index + 1 %>位: <%= user.username %></h2>
+                <p>発言数: <%= user.message_count %></p>
+            </div>
+        <% }) %>
+    </div>
+</body>
+</html>
