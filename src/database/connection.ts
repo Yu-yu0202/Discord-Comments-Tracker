@@ -10,24 +10,21 @@ export const pool = mysql.createPool({
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  connectTimeout: 60000,     // 接続タイムアウトを60秒に設定
+  enableKeepAlive: true,    // キープアライブを有効化
+  keepAliveInitialDelay: 10000  // キープアライブの初期遅延を10秒に設定
 });
 
-export async function initializeDatabase() {
+// 接続テスト用の関数
+export async function testConnection() {
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS message_counts (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id VARCHAR(255) NOT NULL,
-        username VARCHAR(255) NOT NULL,
-        message_count INT DEFAULT 0,
-        date DATE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_user_date (user_id, date)
-      )
-    `);
-    console.log('データベースの初期化が完了しました。');
+    const connection = await pool.getConnection();
+    console.log('データベース接続に成功しました');
+    connection.release();
+    return true;
   } catch (error) {
-    console.error('データベースの初期化中にエラーが発生しました:', error);
+    console.error('データベース接続エラー:', error);
+    return false;
   }
 }

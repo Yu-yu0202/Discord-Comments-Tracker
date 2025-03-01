@@ -3,39 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>発言数ランキング</title>
+    <title><%= title %></title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'メイリオ', sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
         }
         .ranking {
-            margin-top: 20px;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .user-card {
-            padding: 10px;
+        .user {
             margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
         }
-        .first { background-color: #ffd700; }
-        .second { background-color: #c0c0c0; }
-        .third { background-color: #cd7f32; }
+        .date {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>発言数ランキング</h1>
-    <p>日付: <%= date %></p>
-
+    <h1><%= title %></h1>
+    <div class="date">
+        <%= date %>
+    </div>
     <div class="ranking">
-        <% topUsers.forEach((user, index) => { %>
-            <div class="user-card <%= ['first', 'second', 'third'][index] %>">
-                <h2><%= index + 1 %>位: <%= user.username %></h2>
-                <p>発言数: <%= user.message_count %></p>
+        <% users.forEach((user, index) => { %>
+            <div class="user">
+                <h3><%= index + 1 %>位: <%= user.username %></h3>
+                <p>発言数: <%= user.messageCount %></p>
             </div>
-        <% }) %>
+        <% }); %>
     </div>
 </body>
 </html>

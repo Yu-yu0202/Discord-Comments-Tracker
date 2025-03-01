@@ -1,22 +1,44 @@
 import express from 'express';
-import path from 'path';
 import { MessageTracker } from '../services/MessageTracker';
 
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-
-app.get('/', async (_req, res) => {
-  const today = new Date().toISOString().split('T')[0];
-  const topUsers = await MessageTracker.getTopUsers(today);
-
-  res.render('index', { topUsers, date: today });
-});
-
 export function startWebServer() {
+  const app = express();
+  const port = process.env.WEB_PORT || 3000;
+
+  // JSONパースの設定
+  app.use(express.json());
+
+  // メインページ
+  app.get('/', (req, res) => {
+    res.send('Discord メッセージカウントボット Webインターフェース');
+  });
+
+  // ステータスAPI
+  app.get('/api/status/:userId', async (req, res) => {
+    try {
+      const status = await MessageTracker.getUserStatus(req.params.userId);
+      res.json(status);
+    } catch (error) {
+      console.error('APIエラー:', error);
+      res.status(500).json({ error: 'サーバーエラーが発生しました' });
+    }
+  });
+
+  // 月間ランキングAPI
+  app.get('/api/ranking/:year/:month', async (req, res) => {
+    try {
+      const year = parseInt(req.params.year);
+      const month = parseInt(req.params.month);
+      const ranking = await MessageTracker.getMonthlyTopUsers(year, month);
+      res.json(ranking);
+    } catch (error) {
+      console.error('APIエラー:', error);
+      res.status(500).json({ error: 'サーバーエラーが発生しました' });
+    }
+  });
+
+  // サーバー起動
   app.listen(port, () => {
-    console.log(`Webサーバーが http://localhost:${port} で起動しました`);
+    console.log(`Webサーバーが起動しました: http://localhost:${port}`);
   });
 }
