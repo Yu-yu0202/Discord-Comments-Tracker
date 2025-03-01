@@ -1,7 +1,6 @@
-import { Client,Guild } from 'discord.js';
+import { Client } from 'discord.js';
 import cron from 'node-cron';
 import { MessageTracker } from './MessageTracker';
-import { BatchMessageProcessor } from './BatchMessageProcessor';
 import { pool } from '../database/connection';
 import dotenv from 'dotenv';
 
@@ -16,7 +15,7 @@ interface RankingResult {
   username: string;
   message_count: number;
 }
-
+type RankingResults = RankingResult[];
 export class ScheduleManager {
   private static client: Client;
   private static lastProcessedDaily: Date | null = null;
@@ -131,7 +130,7 @@ export class ScheduleManager {
     });
   }
 
-  private static async getRanking(): Promise<RankingResult[]> {
+  private static async getRanking(): Promise<RankingResults> {
     try {
       const [rows] = await pool.query(`
         SELECT
@@ -147,7 +146,7 @@ export class ScheduleManager {
         LIMIT 3
       `);
 
-      return rows as RankingResult[];
+      return rows as RankingResults;
     } catch (e) {
       console.error('ERR:'+ e + '\\n');
       throw e;
@@ -187,7 +186,32 @@ export class ScheduleManager {
     }
 
     try {
-      //AI用:ここに追加してください、このコメントは生成時消して結構です
+      const topUsers = ScheduleManager.getRanking();
+      const guild = ScheduleManager.client.guilds.cache.first();
+      if (!guild) {
+        console.error("Guild Not Found")
+        return;
+      }
+      const members = await guild.members.fetch();
+      for (const [_, member] of members) {
+        for (const roleId of Role) {
+          if (member.roles.cache.has(roleId!)) {
+            const role = guild.roles.cache.get(roleId!);
+            if (role) {
+              await member.roles.remove(role);
+            }
+          }
+        }
+      }
+      for (let i = 0; i < (await topUsers).length && i < Role.length; i++) {
+        // @ts-ignore
+        const member = await guild.members.fetch(topUsers[i].userId).catch(() => null);
+        const role = guild.roles.cache.get(Role[2 - i]!);
+        if (member && role) {
+          await member.roles.add(role);
+          console.log(`${member.user.tag}に${i + 1}位のロールを付与しました。`);
+        }
+      }
       await this.updateLastProcessedDate('monthly');
       console.log(`月次処理が完了しました（${now.toLocaleString('ja-JP')}）`);
 
