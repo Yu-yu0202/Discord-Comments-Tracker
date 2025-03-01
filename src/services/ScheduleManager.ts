@@ -204,9 +204,8 @@ export class ScheduleManager {
         }
       }
       for (let i = 0; i < (await topUsers).length && i < Role.length; i++) {
-        // @ts-ignore
-        const member = await guild.members.fetch(topUsers[i].userId).catch(() => null);
-        const role = guild.roles.cache.get(Role[2 - i]!);
+        const member = await guild.members.fetch((await topUsers)[i].user_id).catch(() => null);
+        const role = guild.roles.cache.get(Role[i]!);
         if (member && role) {
           await member.roles.add(role);
           console.log(`${member.user.tag}に${i + 1}位のロールを付与しました。`);

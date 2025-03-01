@@ -55,7 +55,7 @@ export async function handleCommands(interaction: ChatInputCommandInteraction) {
   }
 
   else if (interaction.commandName === 'status') {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: ['Ephemeral']});
     try {
       const targetUser = interaction.options.getUser('user') || interaction.user;
       const status = await MessageTracker.getUserStatus(targetUser.id);
@@ -82,7 +82,7 @@ export async function handleCommands(interaction: ChatInputCommandInteraction) {
   }
 
   else if (interaction.commandName === 'debug_save') {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: ['Ephemeral']});
     try {
       await MessageTracker.saveMessageCounts();
       await interaction.editReply('メッセージカウントを保存しました');
