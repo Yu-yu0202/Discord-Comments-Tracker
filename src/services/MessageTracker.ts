@@ -17,6 +17,12 @@ export class MessageTracker {
     });
   }
 
+  static async getCurrentCount(userId: string): Promise<number> {
+    const cached = this.messageCache.get(userId);
+    if (!cached) return 0;
+    return cached.count;
+  }
+
   static async saveMessageCounts() {
     const today = new Date().toISOString().split('T')[0];
 
@@ -48,14 +54,21 @@ export class MessageTracker {
   }
 
   static async getUserStatus(userId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const cached = this.messageCache.get(userId);
+    const cachedCount = cached ? cached.count : 0;
+
     const [rows] = await pool.query(`
       SELECT message_count as messageCount, date
       FROM message_counts
-      WHERE user_id = ?
-      ORDER BY date DESC
-      LIMIT 1
-    `, [userId]);
+      WHERE user_id = ? AND date = ?
+    `, [userId, today]);
 
-    return (rows as any[])[0];
+    const dbCount = (rows as any[])[0]?.messageCount || 0;
+
+    return {
+      messageCount: dbCount + cachedCount,
+      date: today
+    };
   }
 }

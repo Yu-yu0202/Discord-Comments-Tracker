@@ -1,4 +1,10 @@
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import {
+  Client,
+  Events,
+  GatewayIntentBits,
+  SlashCommandBuilder,
+  ChatInputCommandInteraction
+} from 'discord.js';
 import dotenv from 'dotenv';
 import { initializeDatabase } from './database/connection';
 import { MessageTracker } from './services/MessageTracker';
@@ -7,11 +13,17 @@ import { startWebServer } from './web/server';
 
 dotenv.config();
 
+// 開発環境の設定
+const isDevelopment = process.env.NODE_ENV === 'development';
+const SAVE_INTERVAL = isDevelopment ? 30000 : 3600000; // 開発環境：30秒、本番環境：1時間
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
   ]
 });
 
@@ -23,8 +35,8 @@ startWebServer();
 
 client.once(Events.ClientReady, async () => {
   console.log(`${client.user?.tag} が起動しました`);
+  console.log(`開発モード: ${isDevelopment ? 'オン' : 'オフ'}`);
 
-  // スラッシュコマンドの登録
   try {
     await client.application?.commands.set(commands);
     console.log('スラッシュコマンドを登録しました');
@@ -32,11 +44,16 @@ client.once(Events.ClientReady, async () => {
     console.error('スラッシュコマンドの登録中にエラーが発生しました:', error);
   }
 
-  // 定期的なメッセージカウントの保存（1時間ごと）
+  // 定期的な保存処理の設定
   setInterval(async () => {
-    await MessageTracker.saveMessageCounts();
-    await updateRoles(client);
-  }, 3600000);
+    try {
+      await MessageTracker.saveMessageCounts();
+      await updateRoles(client);
+      console.log(`${new Date().toLocaleString('ja-JP')} - メッセージカウントを保存し、ロールを更新しました`);
+    } catch (error) {
+      console.error('定期保存処理中にエラーが発生しました:', error);
+    }
+  }, SAVE_INTERVAL);
 });
 
 // メッセージの監視
@@ -47,12 +64,12 @@ client.on(Events.MessageCreate, async (message) => {
     message.author.id,
     message.author.username
   );
-});
 
-// スラッシュコマンドの処理
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  await handleCommands(interaction);
+  // 開発環境での即時デバッグ出力
+  if (isDevelopment) {
+    const count = await MessageTracker.getCurrentCount(message.author.id);
+    console.log(`${message.author.username}の現在の発言数: ${count}`);
+  }
 });
 
 // ロールの更新処理
@@ -67,28 +84,31 @@ async function updateRoles(client: Client) {
   ];
 
   client.guilds.cache.forEach(async (guild) => {
-    // 古いロールを削除
-    roles.forEach(async (roleId) => {
+    // 古いロールの削除
+    for (const roleId of roles) {
       const role = guild.roles.cache.get(roleId!);
       if (role) {
         const members = role.members;
-        members.forEach(member => {
-          member.roles.remove(role).catch(console.error);
-        });
-      }
-    });
-
-    // 新しいロールを付与
-    topUsers.forEach(async (user, index) => {
-      const member = await guild.members.fetch(user.userId).catch(() => null);
-      if (member && roles[index]) {
-        const role = guild.roles.cache.get(roles[index]!);
-        if (role) {
-          member.roles.add(role).catch(console.error);
+        for (const member of members.values()) {
+          await member.roles.remove(role).catch(console.error);
         }
       }
-    });
+    }
+
+    // 新しいロールの付与
+    for (let i = 0; i < topUsers.length; i++) {
+      const user = topUsers[i];
+      const roleId = roles[i];
+      if (roleId) {
+        const member = await guild.members.fetch(user.userId).catch(() => null);
+        const role = guild.roles.cache.get(roleId);
+        if (member && role) {
+          await member.roles.add(role).catch(console.error);
+        }
+      }
+    }
   });
 }
 
+// クライアントの起動
 client.login(process.env.DISCORD_TOKEN);

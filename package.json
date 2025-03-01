@@ -5,7 +5,8 @@
     "scripts": {
         "build": "tsc && powershell -NoProfile  -Command \"Copy-Item -Path .env -Destination dist/\"",
         "start": "node dist/index.js",
-        "dev": "ts-node src/index.ts"
+        "dev": "ts-node src/index.ts",
+        "clean": "powershell -NoProfile -Command \"Remove-Item -Recurse -Force -Path dist/**/*\""
     },
     "dependencies": {
         "discord.js": "^14.18.0",
