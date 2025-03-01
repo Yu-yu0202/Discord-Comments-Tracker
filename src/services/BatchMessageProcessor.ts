@@ -6,14 +6,27 @@ export class BatchMessageProcessor {
   private static RETRY_DELAY = 1000;
 
   static async processCurrentMonthMessages(client: Client) {
+    // UTC日時を取得し、日本時間（UTC+9）に変換
     const now = new Date();
+    now.setHours(now.getHours() + 9);
+
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
+    console.log(`現在の日本時間: ${now.toISOString()}`);
     console.log(`${currentYear}年${currentMonth}月のメッセージ履歴を処理しています...`);
 
-    // 今月の開始日を設定
+    // 今月の開始日を日本時間で設定
     const startDate = new Date(currentYear, currentMonth - 1, 1);
+    startDate.setHours(startDate.getHours() + 9);
+
+    // 今月の終了日を日本時間で設定
+    const endDate = new Date(currentYear, currentMonth, 0);
+    endDate.setHours(23, 59, 59, 999);
+    endDate.setHours(endDate.getHours() + 9);
+
+    console.log(`処理期間: ${startDate.toISOString()} から ${endDate.toISOString()}`);
+
     const messageCountMap = new Map<string, { count: number; username: string }>();
 
     try {
@@ -44,10 +57,12 @@ export class BatchMessageProcessor {
 
               // メッセージを処理
               for (const message of messages.values()) {
-                const messageDate = message.createdAt;
+                // メッセージの日時を日本時間に変換
+                const messageDate = new Date(message.createdAt);
+                messageDate.setHours(messageDate.getHours() + 9);
 
                 // 今月のメッセージのみを処理
-                if (messageDate >= startDate && !message.author.bot) {
+                if (messageDate >= startDate && messageDate <= endDate && !message.author.bot) {
                   const userId = message.author.id;
                   const current = messageCountMap.get(userId) || {
                     count: 0,
@@ -60,7 +75,6 @@ export class BatchMessageProcessor {
                   });
                   processedCount++;
                 } else if (messageDate < startDate) {
-                  // 今月より前のメッセージに到達したら、このチャンネルの処理を終了
                   break;
                 }
               }
@@ -68,7 +82,6 @@ export class BatchMessageProcessor {
               console.log(`${channel.name}で${processedCount}件のメッセージを処理しました`);
               lastMessageId = messages.last()?.id;
 
-              // APIレート制限を考慮して少し待機
               await new Promise(resolve => setTimeout(resolve, 1000));
             }
           } catch (error) {
@@ -78,56 +91,45 @@ export class BatchMessageProcessor {
       }
 
       // データベースに保存
-      const savedCount = await this.saveToDatabase(messageCountMap, currentYear, currentMonth);
-      console.log(`今月の履歴データの処理が完了しました。${savedCount}件のデータを保存しました。`);
+      for (const [userId, data] of messageCountMap.entries()) {
+        if (data.count === 0) continue;
 
-      // 保存されたデータを確認
-      const [rows] = await pool.query(`
-        SELECT COUNT(*) as count
-        FROM message_counts
-        WHERE YEAR(date) = ? AND MONTH(date) = ?
-      `, [currentYear, currentMonth]);
-
-      console.log(`データベース内の${currentYear}年${currentMonth}月のレコード数: ${(rows as any[])[0].count}`);
-
-    } catch (error) {
-      console.error('バッチ処理中にエラーが発生:', error);
-      throw error;
-    }
-  }
-
-  private static async saveToDatabase(
-    messageCountMap: Map<string, { count: number; username: string }>,
-    year: number,
-    month: number
-  ): Promise<number> {
-    const date = new Date(year, month - 1, 1).toISOString().split('T')[0];
-    let savedCount = 0;
-
-    for (const [userId, data] of messageCountMap.entries()) {
-      if (data.count === 0) continue;
-
-      for (let i = 0; i < this.MAX_RETRIES; i++) {
         try {
+          // 日本時間の日付を使用
+          const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+
           const [result] = await pool.query(`
             INSERT INTO message_counts (user_id, username, message_count, date)
             VALUES (?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
             message_count = VALUES(message_count),
             username = VALUES(username)
-          `, [userId, data.username, data.count, date]);
+          `, [userId, data.username, data.count, dateStr]);
 
-          console.log(`ユーザー ${data.username} のデータを保存: ${data.count}件`);
-          savedCount++;
-          break;
+          console.log(`ユーザー ${data.username} のデータを保存しました:`, {
+            userId,
+            count: data.count,
+            date: dateStr
+          });
         } catch (error) {
-          console.error(`データ保存中にエラーが発生 (試行 ${i + 1}/${this.MAX_RETRIES}):`, error);
-          if (i === this.MAX_RETRIES - 1) throw error;
-          await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+          console.error('データ保存中のエラー:', error);
+          throw error;
         }
       }
-    }
 
-    return savedCount;
+      // 最終確認
+      const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+      const [finalCheck] = await pool.query(`
+        SELECT COUNT(*) as count, date
+        FROM message_counts
+        WHERE date = ?
+      `, [dateStr]);
+
+      console.log('保存結果の確認:', finalCheck);
+
+    } catch (error) {
+      console.error('バッチ処理中にエラーが発生:', error);
+      throw error;
+    }
   }
 }

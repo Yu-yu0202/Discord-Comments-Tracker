@@ -9,11 +9,13 @@
         "clean": "powershell -NoProfile -Command \"Remove-Item -Recurse -Force -Path dist/**/*\""
     },
     "dependencies": {
+        "@types/node-cron": "^3.0.11",
         "discord.js": "^14.18.0",
         "dotenv": "^16.4.7",
         "ejs": "^3.1.10",
         "express": "^4.21.2",
         "mysql2": "^3.12.0",
+        "node-cron": "^3.0.3",
         "node-schedule": "^2.1.1"
     },
     "devDependencies": {
