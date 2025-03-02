@@ -22,26 +22,6 @@ export const commands: ApplicationCommandDataResolvable[] = [
         .setDescription('確認したいユーザー')
         .setRequired(false)
     )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName('debug_save')
-    .setDescription('現在のメッセージカウントを保存します（開発用）')
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName('test')
-    .setDescription('処理のテストを実行します')
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('daily')
-        .setDescription('日次処理のテストを実行します')
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('monthly')
-        .setDescription('月次処理のテストを実行します')
-    )
     .toJSON()
 ];
 
