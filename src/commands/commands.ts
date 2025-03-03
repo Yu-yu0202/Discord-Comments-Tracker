@@ -22,6 +22,25 @@ export const commands: ApplicationCommandDataResolvable[] = [
         .setDescription('確認したいユーザー')
         .setRequired(false)
     )
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName('debug_save')
+    .setDescription('現在のメッセージカウントを保存します（開発用）')
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName('test')
+    .setDescription('処理のテストを実行します')
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('daily')
+        .setDescription('日次処理のテストを実行します')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('monthly')
+        .setDescription('月次処理のテストを実行します')
+    )
     .toJSON()
 ];
 
@@ -62,6 +81,12 @@ export async function handleCommands(interaction: ChatInputCommandInteraction) {
   }
 
   else if (interaction.commandName === 'debug_save') {
+    if (process.env.NODE_ENV !== 'development'){
+      await interaction.reply({
+        content: 'このコマンドは開発環境でのみ使用可能です。',
+        ephemeral: true
+      })
+    }
     await interaction.deferReply({ flags: ['Ephemeral']});
     try {
       await MessageTracker.saveMessageCounts();
